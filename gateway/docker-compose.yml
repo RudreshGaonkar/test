@@ -6,7 +6,7 @@ services:
     container_name: gateway-service
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "3000:8080"
     environment:
       - PORT=8080
       # Points to IPs of respective VMs in distributed deployment
