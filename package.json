@@ -1,0 +1,26 @@
+{
+  "name": "node-pg-tasks-app",
+  "version": "1.0.0",
+  "description": "Production-ready Node.js Express web application with PostgreSQL database",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": [
+    "express",
+    "postgresql",
+    "tasks",
+    "rest-api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
