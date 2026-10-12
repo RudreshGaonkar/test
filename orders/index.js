@@ -20,7 +20,9 @@ const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://10.128.0.10:3
 
 app.use(express.json());
 
-const initDb = async () => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const initDbWithRetry = async (maxRetries = 10, delayMs = 2000) => {
   const query = `
     CREATE TABLE IF NOT EXISTS orders (
       id SERIAL PRIMARY KEY,
@@ -36,14 +38,24 @@ const initDb = async () => {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
-  try {
-    await pool.query(query);
-    console.log('Orders DB initialized.');
-  } catch (err) {
-    console.error('Orders DB init error:', err.message);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Orders] Connecting to DB (Attempt ${attempt}/${maxRetries})...`);
+      await pool.query(query);
+      console.log('[Orders] Database initialized successfully.');
+      return;
+    } catch (err) {
+      console.error(`[Orders] DB init failed (attempt ${attempt}/${maxRetries}):`, err.message);
+      if (attempt < maxRetries) {
+        console.log(`[Orders] Retrying DB connection in ${delayMs / 1000}s...`);
+        await sleep(delayMs);
+      } else {
+        console.error('[Orders] Exhausted DB retries. Continuing startup...');
+      }
+    }
   }
 };
-initDb();
 
 app.get('/health', async (req, res) => {
   try {
@@ -154,6 +166,11 @@ app.post('/orders', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Orders Service running on port ${PORT}`);
-});
+const startServer = async () => {
+  await initDbWithRetry(10, 2000);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Orders Service running on port ${PORT}`);
+  });
+};
+
+startServer();

@@ -15,7 +15,8 @@ services:
       - DB_PASSWORD=users_pass
       - DB_NAME=usersdb
     depends_on:
-      - users-db
+      users-db:
+        condition: service_healthy
     networks:
       - users-net
 
@@ -27,6 +28,11 @@ services:
       POSTGRES_USER: users_user
       POSTGRES_PASSWORD: users_pass
       POSTGRES_DB: usersdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U users_user -d usersdb"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
     volumes:
       - users_data:/var/lib/postgresql/data
     networks:

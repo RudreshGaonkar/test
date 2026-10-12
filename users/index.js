@@ -15,7 +15,9 @@ const pool = new Pool({
 
 app.use(express.json());
 
-const initDb = async () => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const initDbWithRetry = async (maxRetries = 10, delayMs = 2000) => {
   const query = `
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -36,23 +38,34 @@ const initDb = async () => {
       synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
-  try {
-    await pool.query(query);
-    const countRes = await pool.query('SELECT COUNT(*) FROM users');
-    if (parseInt(countRes.rows[0].count, 10) === 0) {
-      await pool.query(`
-        INSERT INTO users (name, email, loyalty_points, total_spent) VALUES
-        ('Rudresh Gaonkar', 'rudresh@example.com', 250, 45.00),
-        ('John Doe', 'john.doe@example.com', 120, 20.00),
-        ('Alice Smith', 'alice@example.com', 300, 110.00);
-      `);
-      console.log('Users DB seeded with initial users.');
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Users] Connecting to DB (Attempt ${attempt}/${maxRetries})...`);
+      await pool.query(query);
+      const countRes = await pool.query('SELECT COUNT(*) FROM users');
+      if (parseInt(countRes.rows[0].count, 10) === 0) {
+        await pool.query(`
+          INSERT INTO users (name, email, loyalty_points, total_spent) VALUES
+          ('Rudresh Gaonkar', 'rudresh@example.com', 250, 45.00),
+          ('John Doe', 'john.doe@example.com', 120, 20.00),
+          ('Alice Smith', 'alice@example.com', 300, 110.00);
+        `);
+        console.log('[Users] Seeded initial users table.');
+      }
+      console.log('[Users] Database initialized successfully.');
+      return;
+    } catch (err) {
+      console.error(`[Users] DB init failed (attempt ${attempt}/${maxRetries}):`, err.message);
+      if (attempt < maxRetries) {
+        console.log(`[Users] Retrying DB connection in ${delayMs / 1000}s...`);
+        await sleep(delayMs);
+      } else {
+        console.error('[Users] Exhausted DB retries. Continuing startup...');
+      }
     }
-  } catch (err) {
-    console.error('Users DB init error:', err.message);
   }
 };
-initDb();
 
 app.get('/health', async (req, res) => {
   try {
@@ -150,6 +163,11 @@ app.post('/users/sync-order', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Users Service running on port ${PORT}`);
-});
+const startServer = async () => {
+  await initDbWithRetry(10, 2000);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Users Service running on port ${PORT}`);
+  });
+};
+
+startServer();

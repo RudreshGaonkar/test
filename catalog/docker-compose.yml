@@ -15,7 +15,8 @@ services:
       - DB_PASSWORD=catalog_pass
       - DB_NAME=catalogdb
     depends_on:
-      - catalog-db
+      catalog-db:
+        condition: service_healthy
     networks:
       - catalog-net
 
@@ -27,6 +28,11 @@ services:
       POSTGRES_USER: catalog_user
       POSTGRES_PASSWORD: catalog_pass
       POSTGRES_DB: catalogdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catalog_user -d catalogdb"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
     volumes:
       - catalog_data:/var/lib/postgresql/data
     networks:

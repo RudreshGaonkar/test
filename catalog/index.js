@@ -15,7 +15,9 @@ const pool = new Pool({
 
 app.use(express.json());
 
-const initDb = async () => {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const initDbWithRetry = async (maxRetries = 10, delayMs = 2000) => {
   const query = `
     CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY,
@@ -26,24 +28,35 @@ const initDb = async () => {
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `;
-  try {
-    await pool.query(query);
-    const countRes = await pool.query('SELECT COUNT(*) FROM products');
-    if (parseInt(countRes.rows[0].count, 10) === 0) {
-      await pool.query(`
-        INSERT INTO products (name, price, stock, description) VALUES
-        ('Cloud VPS Hosting - 1mo', 12.99, 50, 'High-performance cloud compute unit'),
-        ('Managed PostgreSQL DB', 24.50, 25, 'High-availability managed DB cluster'),
-        ('SSL Wildcard Certificate', 9.99, 100, 'Security certificate with instant issuance'),
-        ('Kubernetes Node Cluster', 79.00, 10, 'Scale-ready container orchestration engine');
-      `);
-      console.log('Catalog DB seeded with initial products.');
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[Catalog] Connecting to DB (Attempt ${attempt}/${maxRetries})...`);
+      await pool.query(query);
+      const countRes = await pool.query('SELECT COUNT(*) FROM products');
+      if (parseInt(countRes.rows[0].count, 10) === 0) {
+        await pool.query(`
+          INSERT INTO products (name, price, stock, description) VALUES
+          ('Cloud VPS Hosting - 1mo', 12.99, 50, 'High-performance cloud compute unit'),
+          ('Managed PostgreSQL DB', 24.50, 25, 'High-availability managed DB cluster'),
+          ('SSL Wildcard Certificate', 9.99, 100, 'Security certificate with instant issuance'),
+          ('Kubernetes Node Cluster', 79.00, 10, 'Scale-ready container orchestration engine');
+        `);
+        console.log('[Catalog] Seeded initial products table.');
+      }
+      console.log('[Catalog] Database initialized successfully.');
+      return;
+    } catch (err) {
+      console.error(`[Catalog] DB init failed (attempt ${attempt}/${maxRetries}):`, err.message);
+      if (attempt < maxRetries) {
+        console.log(`[Catalog] Retrying DB connection in ${delayMs / 1000}s...`);
+        await sleep(delayMs);
+      } else {
+        console.error('[Catalog] Exhausted DB retries. Continuing startup...');
+      }
     }
-  } catch (err) {
-    console.error('Catalog DB init error:', err.message);
   }
 };
-initDb();
 
 app.get('/health', async (req, res) => {
   try {
@@ -118,6 +131,11 @@ app.patch('/products/:id/stock', async (req, res) => {
   }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Catalog Service running on port ${PORT}`);
-});
+const startServer = async () => {
+  await initDbWithRetry(10, 2000);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Catalog Service running on port ${PORT}`);
+  });
+};
+
+startServer();
