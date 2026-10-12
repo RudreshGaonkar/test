@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  orders-service:
+    build: .
+    container_name: orders-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - PORT=4002
+      - DB_HOST=orders-db
+      - DB_PORT=5432
+      - DB_USER=orders_user
+      - DB_PASSWORD=orders_pass
+      - DB_NAME=ordersdb
+      # Set to target IP/hostname when deploying across different VMs
+      - CATALOG_SERVICE_URL=${CATALOG_SERVICE_URL:-http://host.docker.internal:4001}
+      - USERS_SERVICE_URL=${USERS_SERVICE_URL:-http://host.docker.internal:4003}
+    depends_on:
+      - orders-db
+    networks:
+      - orders-net
+
+  orders-db:
+    image: postgres:15-alpine
+    container_name: orders-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: orders_user
+      POSTGRES_PASSWORD: orders_pass
+      POSTGRES_DB: ordersdb
+    volumes:
+      - orders_data:/var/lib/postgresql/data
+    networks:
+      - orders-net
+
+volumes:
+  orders_data:
+
+networks:
+  orders-net:
+    driver: bridge

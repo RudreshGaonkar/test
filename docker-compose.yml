@@ -1,0 +1,125 @@
+version: '3.8'
+
+# Full multi-container development stack for single-host testing
+services:
+  gateway-service:
+    build: ./gateway
+    container_name: gateway-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - CATALOG_SERVICE_URL=http://catalog-service:4001
+      - ORDERS_SERVICE_URL=http://orders-service:4002
+      - USERS_SERVICE_URL=http://users-service:4003
+    depends_on:
+      - catalog-service
+      - orders-service
+      - users-service
+    networks:
+      - cloud-mesh
+
+  catalog-service:
+    build: ./catalog
+    container_name: catalog-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - DB_HOST=catalog-db
+      - DB_PORT=5432
+      - DB_USER=catalog_user
+      - DB_PASSWORD=catalog_pass
+      - DB_NAME=catalogdb
+    depends_on:
+      - catalog-db
+    networks:
+      - cloud-mesh
+
+  catalog-db:
+    image: postgres:15-alpine
+    container_name: catalog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: catalog_pass
+      POSTGRES_DB: catalogdb
+    volumes:
+      - catalog_vol:/var/lib/postgresql/data
+    networks:
+      - cloud-mesh
+
+  orders-service:
+    build: ./orders
+    container_name: orders-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - PORT=4002
+      - DB_HOST=orders-db
+      - DB_PORT=5432
+      - DB_USER=orders_user
+      - DB_PASSWORD=orders_pass
+      - DB_NAME=ordersdb
+      - CATALOG_SERVICE_URL=http://catalog-service:4001
+      - USERS_SERVICE_URL=http://users-service:4003
+    depends_on:
+      - orders-db
+    networks:
+      - cloud-mesh
+
+  orders-db:
+    image: postgres:15-alpine
+    container_name: orders-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: orders_user
+      POSTGRES_PASSWORD: orders_pass
+      POSTGRES_DB: ordersdb
+    volumes:
+      - orders_vol:/var/lib/postgresql/data
+    networks:
+      - cloud-mesh
+
+  users-service:
+    build: ./users
+    container_name: users-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    environment:
+      - PORT=4003
+      - DB_HOST=users-db
+      - DB_PORT=5432
+      - DB_USER=users_user
+      - DB_PASSWORD=users_pass
+      - DB_NAME=usersdb
+    depends_on:
+      - users-db
+    networks:
+      - cloud-mesh
+
+  users-db:
+    image: postgres:15-alpine
+    container_name: users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: users_user
+      POSTGRES_PASSWORD: users_pass
+      POSTGRES_DB: usersdb
+    volumes:
+      - users_vol:/var/lib/postgresql/data
+    networks:
+      - cloud-mesh
+
+volumes:
+  catalog_vol:
+  orders_vol:
+  users_vol:
+
+networks:
+  cloud-mesh:
+    driver: bridge

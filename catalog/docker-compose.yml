@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  catalog-service:
+    build: .
+    container_name: catalog-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - DB_HOST=catalog-db
+      - DB_PORT=5432
+      - DB_USER=catalog_user
+      - DB_PASSWORD=catalog_pass
+      - DB_NAME=catalogdb
+    depends_on:
+      - catalog-db
+    networks:
+      - catalog-net
+
+  catalog-db:
+    image: postgres:15-alpine
+    container_name: catalog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: catalog_pass
+      POSTGRES_DB: catalogdb
+    volumes:
+      - catalog_data:/var/lib/postgresql/data
+    networks:
+      - catalog-net
+
+volumes:
+  catalog_data:
+
+networks:
+  catalog-net:
+    driver: bridge

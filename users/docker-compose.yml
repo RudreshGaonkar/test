@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  users-service:
+    build: .
+    container_name: users-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    environment:
+      - PORT=4003
+      - DB_HOST=users-db
+      - DB_PORT=5432
+      - DB_USER=users_user
+      - DB_PASSWORD=users_pass
+      - DB_NAME=usersdb
+    depends_on:
+      - users-db
+    networks:
+      - users-net
+
+  users-db:
+    image: postgres:15-alpine
+    container_name: users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: users_user
+      POSTGRES_PASSWORD: users_pass
+      POSTGRES_DB: usersdb
+    volumes:
+      - users_data:/var/lib/postgresql/data
+    networks:
+      - users-net
+
+volumes:
+  users_data:
+
+networks:
+  users-net:
+    driver: bridge

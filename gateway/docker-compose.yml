@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  gateway-service:
+    build: .
+    container_name: gateway-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      # Points to IPs of respective VMs in distributed deployment
+      - CATALOG_SERVICE_URL=${CATALOG_SERVICE_URL:-http://host.docker.internal:4001}
+      - ORDERS_SERVICE_URL=${ORDERS_SERVICE_URL:-http://host.docker.internal:4002}
+      - USERS_SERVICE_URL=${USERS_SERVICE_URL:-http://host.docker.internal:4003}
+    networks:
+      - gateway-net
+
+networks:
+  gateway-net:
+    driver: bridge
