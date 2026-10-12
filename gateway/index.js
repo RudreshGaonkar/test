@@ -39,67 +39,99 @@ app.get('/api/health', async (req, res) => {
 });
 
 // -----------------------------------------------------------------
-// Route Proxies: Catalog
+// Route Proxies: Catalog (Forwards /api/catalog and /catalog to CATALOG_SERVICE_URL/products)
 // -----------------------------------------------------------------
-app.get('/api/catalog/products', async (req, res) => {
+const getCatalogHandler = async (req, res) => {
   try {
-    const resp = await axios.get(`${CATALOG_SERVICE_URL}/products`, { timeout: 4000 });
-    res.json(resp.data);
+    const targetUrl = req.params.id 
+      ? `${CATALOG_SERVICE_URL}/products/${req.params.id}` 
+      : `${CATALOG_SERVICE_URL}/products`;
+    const resp = await axios.get(targetUrl, { timeout: 4000 });
+    res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
 
-app.post('/api/catalog/products', async (req, res) => {
+const postCatalogHandler = async (req, res) => {
   try {
     const resp = await axios.post(`${CATALOG_SERVICE_URL}/products`, req.body, { timeout: 4000 });
     res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
 
-// -----------------------------------------------------------------
-// Route Proxies: Orders
-// -----------------------------------------------------------------
-app.get('/api/orders', async (req, res) => {
+const patchCatalogStockHandler = async (req, res) => {
   try {
-    const resp = await axios.get(`${ORDERS_SERVICE_URL}/orders`, { timeout: 4000 });
-    res.json(resp.data);
+    const resp = await axios.patch(`${CATALOG_SERVICE_URL}/products/${req.params.id}/stock`, req.body, { timeout: 4000 });
+    res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
 
-app.post('/api/orders', async (req, res) => {
+// Support both /api/catalog and /catalog
+app.get(['/api/catalog', '/catalog'], getCatalogHandler);
+app.get(['/api/catalog/:id', '/catalog/:id'], getCatalogHandler);
+app.post(['/api/catalog', '/catalog'], postCatalogHandler);
+app.patch(['/api/catalog/:id/stock', '/catalog/:id/stock'], patchCatalogStockHandler);
+
+// Backward compatibility alias for /api/catalog/products
+app.get('/api/catalog/products', getCatalogHandler);
+app.post('/api/catalog/products', postCatalogHandler);
+
+// -----------------------------------------------------------------
+// Route Proxies: Orders (Forwards /api/orders and /orders to ORDERS_SERVICE_URL/orders)
+// -----------------------------------------------------------------
+const getOrdersHandler = async (req, res) => {
+  try {
+    const resp = await axios.get(`${ORDERS_SERVICE_URL}/orders`, { timeout: 4000 });
+    res.status(resp.status).json(resp.data);
+  } catch (err) {
+    res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
+  }
+};
+
+const postOrdersHandler = async (req, res) => {
   try {
     const resp = await axios.post(`${ORDERS_SERVICE_URL}/orders`, req.body, { timeout: 6000 });
     res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
+
+app.get(['/api/orders', '/orders'], getOrdersHandler);
+app.post(['/api/orders', '/orders'], postOrdersHandler);
 
 // -----------------------------------------------------------------
-// Route Proxies: Users
+// Route Proxies: Users (Forwards /api/users and /users to USERS_SERVICE_URL/users)
 // -----------------------------------------------------------------
-app.get('/api/users', async (req, res) => {
+const getUsersHandler = async (req, res) => {
   try {
-    const resp = await axios.get(`${USERS_SERVICE_URL}/users`, { timeout: 4000 });
-    res.json(resp.data);
+    const targetUrl = req.params.id 
+      ? `${USERS_SERVICE_URL}/users/${req.params.id}` 
+      : `${USERS_SERVICE_URL}/users`;
+    const resp = await axios.get(targetUrl, { timeout: 4000 });
+    res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
 
-app.get('/api/users/:id', async (req, res) => {
+const postUsersHandler = async (req, res) => {
   try {
-    const resp = await axios.get(`${USERS_SERVICE_URL}/users/${req.params.id}`, { timeout: 4000 });
-    res.json(resp.data);
+    const resp = await axios.post(`${USERS_SERVICE_URL}/users`, req.body, { timeout: 4000 });
+    res.status(resp.status).json(resp.data);
   } catch (err) {
     res.status(err.response?.status || 502).json({ error: err.response?.data?.error || err.message });
   }
-});
+};
+
+app.get(['/api/users', '/users'], getUsersHandler);
+app.get(['/api/users/:id', '/users/:id'], getUsersHandler);
+app.post(['/api/users', '/users'], postUsersHandler);
 
 // -----------------------------------------------------------------
 // Minimal E-Commerce Dashboard UI (HTML / CSS / JS)
@@ -280,22 +312,22 @@ app.get('/', (req, res) => {
       </div>
       <div>
         <label style="font-size: 0.85rem; color: var(--text-muted);">Active User: </label>
-        <select id="user-select" onchange="loadUserOrders()"></select>
+        <select id="user-select"></select>
       </div>
     </header>
 
     <div class="services-status-bar">
       <div class="status-badge">
         <span class="dot" id="dot-catalog"></span>
-        <span>Catalog Service (VM 1)</span>
+        <span>Catalog Service (10.128.0.9:3001)</span>
       </div>
       <div class="status-badge">
         <span class="dot" id="dot-orders"></span>
-        <span>Orders Service (VM 2)</span>
+        <span>Orders Service (10.128.0.8:3002)</span>
       </div>
       <div class="status-badge">
         <span class="dot" id="dot-users"></span>
-        <span>Users Service (VM 3)</span>
+        <span>Users Service (10.128.0.10:3003)</span>
       </div>
     </div>
 
@@ -357,15 +389,16 @@ app.get('/', (req, res) => {
 
     function setDot(id, online) {
       const el = document.getElementById(id);
-      el.className = 'dot ' + (online ? 'online' : 'offline');
+      if (el) el.className = 'dot ' + (online ? 'online' : 'offline');
     }
 
     async function loadProducts() {
       const list = document.getElementById('products-list');
       try {
-        const res = await fetch('/api/catalog/products');
+        // Calls Gateway proxy /api/catalog which forwards to CATALOG_SERVICE_URL/products
+        const res = await fetch('/api/catalog');
         const products = await res.json();
-        if (products.error) throw new Error(products.error);
+        if (!res.ok || products.error) throw new Error(products.error || 'Failed to load catalog');
 
         list.innerHTML = products.map(p => \`
           <div class="item-row">
@@ -379,7 +412,7 @@ app.get('/', (req, res) => {
           </div>
         \`).join('');
       } catch (e) {
-        list.innerHTML = '<div style="color:var(--danger)">Failed to load Catalog Service</div>';
+        list.innerHTML = '<div style="color:var(--danger)">Failed to load Catalog Service: ' + e.message + '</div>';
       }
     }
 
@@ -387,9 +420,10 @@ app.get('/', (req, res) => {
       const userSelect = document.getElementById('user-select');
       const usersList = document.getElementById('users-list');
       try {
+        // Calls Gateway proxy /api/users which forwards to USERS_SERVICE_URL/users
         const res = await fetch('/api/users');
         const users = await res.json();
-        if (users.error) throw new Error(users.error);
+        if (!res.ok || users.error) throw new Error(users.error || 'Failed to load users');
 
         userSelect.innerHTML = users.map(u => 
           \`<option value="\${u.id}">\${u.name} (\${u.loyalty_points} pts)</option>\`
@@ -403,21 +437,22 @@ app.get('/', (req, res) => {
             </div>
             <div style="text-align:right">
               <span class="tag synced">\${u.loyalty_points} Points</span>
-              <div class="item-sub" style="margin-top:4px">Spent: $\${parseFloat(u.total_spent).toFixed(2)}</div>
+              <div class="item-sub" style="margin-top:4px">Spent: $\${parseFloat(u.total_spent || 0).toFixed(2)}</div>
             </div>
           </div>
         \`).join('');
       } catch (e) {
-        usersList.innerHTML = '<div style="color:var(--danger)">Failed to load Users Service</div>';
+        usersList.innerHTML = '<div style="color:var(--danger)">Failed to load Users Service: ' + e.message + '</div>';
       }
     }
 
     async function loadOrders() {
       const list = document.getElementById('orders-list');
       try {
+        // Calls Gateway proxy /api/orders which forwards to ORDERS_SERVICE_URL/orders
         const res = await fetch('/api/orders');
         const orders = await res.json();
-        if (orders.error) throw new Error(orders.error);
+        if (!res.ok || orders.error) throw new Error(orders.error || 'Failed to load orders');
 
         if (orders.length === 0) {
           list.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding: 20px;">No orders placed yet.</div>';
@@ -439,7 +474,7 @@ app.get('/', (req, res) => {
           </div>
         \`).join('');
       } catch (e) {
-        list.innerHTML = '<div style="color:var(--danger)">Failed to load Orders Service</div>';
+        list.innerHTML = '<div style="color:var(--danger)">Failed to load Orders Service: ' + e.message + '</div>';
       }
     }
 
