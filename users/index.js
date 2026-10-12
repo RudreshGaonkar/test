@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 4003;
+const PORT = process.env.PORT || 3003;
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'users-db',

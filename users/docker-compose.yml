@@ -6,9 +6,9 @@ services:
     container_name: users-service
     restart: unless-stopped
     ports:
-      - "4003:4003"
+      - "3003:3003"
     environment:
-      - PORT=4003
+      - PORT=3003
       - DB_HOST=users-db
       - DB_PORT=5432
       - DB_USER=users_user

@@ -4,7 +4,7 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 4002;
+const PORT = process.env.PORT || 3002;
 
 const pool = new Pool({
   host: process.env.DB_HOST || 'orders-db',
@@ -15,8 +15,8 @@ const pool = new Pool({
 });
 
 // Inter-service endpoints configured via environment variables
-const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:4001';
-const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://localhost:4003';
+const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://10.128.0.9:3001';
+const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://10.128.0.10:3003';
 
 app.use(express.json());
 

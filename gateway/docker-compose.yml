@@ -10,9 +10,9 @@ services:
     environment:
       - PORT=8080
       # Points to IPs of respective VMs in distributed deployment
-      - CATALOG_SERVICE_URL=${CATALOG_SERVICE_URL:-http://host.docker.internal:4001}
-      - ORDERS_SERVICE_URL=${ORDERS_SERVICE_URL:-http://host.docker.internal:4002}
-      - USERS_SERVICE_URL=${USERS_SERVICE_URL:-http://host.docker.internal:4003}
+      - CATALOG_SERVICE_URL=${CATALOG_SERVICE_URL:-http://10.128.0.9:3001}
+      - ORDERS_SERVICE_URL=${ORDERS_SERVICE_URL:-http://10.128.0.8:3002}
+      - USERS_SERVICE_URL=${USERS_SERVICE_URL:-http://10.128.0.10:3003}
     networks:
       - gateway-net
 

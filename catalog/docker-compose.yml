@@ -6,9 +6,9 @@ services:
     container_name: catalog-service
     restart: unless-stopped
     ports:
-      - "4001:4001"
+      - "3001:3001"
     environment:
-      - PORT=4001
+      - PORT=3001
       - DB_HOST=catalog-db
       - DB_PORT=5432
       - DB_USER=catalog_user

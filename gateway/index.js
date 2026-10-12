@@ -6,9 +6,9 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 // Configured URLs for downstream microservices
-const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://localhost:4001';
-const ORDERS_SERVICE_URL = process.env.ORDERS_SERVICE_URL || 'http://localhost:4002';
-const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://localhost:4003';
+const CATALOG_SERVICE_URL = process.env.CATALOG_SERVICE_URL || 'http://10.128.0.9:3001';
+const ORDERS_SERVICE_URL = process.env.ORDERS_SERVICE_URL || 'http://10.128.0.8:3002';
+const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://10.128.0.10:3003';
 
 app.use(express.json());
 
